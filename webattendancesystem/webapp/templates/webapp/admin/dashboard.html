@@ -1,0 +1,94 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Stats Cards -->
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Teachers</h5>
+                <h2 class="mb-0">{{ total_teachers }}</h2>
+                <small class="text-success"><i class="fas fa-chalkboard-teacher"></i></small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Students</h5>
+                <h2 class="mb-0">{{ total_students }}</h2>
+                <small class="text-primary"><i class="fas fa-user-graduate"></i></small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Subjects</h5>
+                <h2 class="mb-0">{{ total_subjects }}</h2>
+                <small class="text-info"><i class="fas fa-book"></i></small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Sections</h5>
+                <h2 class="mb-0">{{ total_sections }}</h2>
+                <small class="text-warning"><i class="fas fa-users"></i></small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Attendance -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Attendance</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="recent-attendance">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Subject</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attendance in recent_attendance %}
+                            <tr>
+                                <td>{{ attendance.student.first_name }} {{ attendance.student.last_name }}</td>
+                                <td>{{ attendance.session.schedule.subject.name }}</td>
+                                <td>
+                                    
+                                        {{ attendance.get_status_display }}
+                                    
+                                </td>
+                                <td>{{ attendance.marked_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#recent-attendance').DataTable({
+        order: [[3, 'desc']],
+        pageLength: 10
+    });
+});
+</script>
+{% endblock %}

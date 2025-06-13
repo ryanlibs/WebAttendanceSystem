@@ -1,0 +1,128 @@
+<!-- filepath: c:\Users\ryan\Desktop\projects\WebAttendanceSystem\webattendancesystem\webapp\templates\teacher\dashboard.html -->
+{% extends 'webapp/base.html' %}
+
+{% block title %}Teacher Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Stats Cards - Keep these as they are -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Students</h5>
+                <h2 class="mb-0">{{ total_students }}</h2>
+                <small class="text-primary"><i class="fas fa-user-graduate"></i></small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Active Sessions</h5>
+                <h2 class="mb-0">{{ active_sessions }}</h2>
+                <small class="text-success"><i class="fas fa-clock"></i></small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Sections</h5>
+                <h2 class="mb-0">{{ sections.count }}</h2>
+                <small class="text-warning"><i class="fas fa-users"></i></small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Schedule - Updated to match schedule.html style -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Today's Schedule</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="today-schedule-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Subject</th>
+                                <th>Section</th>
+                                <th>Room</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for schedule in schedules %}
+                            <tr>
+                                <td>{{ schedule.start_time|time:"H:i" }} - {{ schedule.end_time|time:"H:i" }}</td>
+                                <td>{{ schedule.subject.name }}</td>
+                                <td>{{ schedule.section.name }}</td>
+                                <td>{{ schedule.room }}</td>
+                                <td>
+                                    {% if schedule.can_take_attendance %}
+                                        {% if schedule.has_ongoing_session %}
+                                            <a href="{% url 'take_attendance' schedule.ongoing_session.id %}" 
+                                               class="btn btn-sm btn-warning">
+                                                <i class="fas fa-clipboard-list"></i> Continue Session
+                                            </a>
+                                        {% else %}
+                                            <a href="{% url 'start_attendance_session' schedule.id %}" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-clipboard-check"></i> Take Attendance
+                                            </a>
+                                        {% endif %}
+                                    {% else %}
+                                        <button class="btn btn-sm btn-secondary" disabled>
+                                            <i class="fas fa-clock"></i> Not Available
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Sessions -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Sessions</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% for session in recent_sessions %}
+                    {% if session.id %}
+                    <a href="{% url 'take_attendance' session.id %}" 
+                       class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ session.schedule.subject.name }}</h6>
+                            <small>{{ session.date|date:"M d" }}</small>
+                        </div>
+                        <p class="mb-1">{{ session.schedule.section.name }}</p>
+                        <small>{{ session.get_status_display }}</small>
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#today-schedule-table').DataTable({
+        order: [[0, 'asc']],
+        pageLength: 10,
+        dom: 'frtip'
+    });
+});
+</script>
+{% endblock %}

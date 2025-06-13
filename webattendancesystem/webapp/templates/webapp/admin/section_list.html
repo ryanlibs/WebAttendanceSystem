@@ -1,0 +1,163 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Section Management{% endblock %}
+{% block page_title %}Section Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Add Section Button -->
+    <div class="col-12 mb-4">
+        <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSectionModal">
+                <i class="fas fa-plus me-2"></i>Add Section
+            </button>
+        </div>
+    </div>
+
+    <!-- Section List -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="section-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Year Level</th>
+                                <th>Students</th>
+                                <th>Teachers</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for section in sections %}
+                            <tr>
+                                <td>{{ section.name }}</td>
+                                <td>{{ section.year_level }}</td>
+                                <td>{{ section.student_count }}</td>
+                                <td>{{ section.teacher_count }}</td>
+                                <td>{{ section.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            onclick="editSection({
+                                                id: '{{ section.id }}',
+                                                name: '{{ section.name }}',
+                                                yearLevel: '{{ section.year_level }}'
+                                            })">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <a href="{% url 'section_delete' section.id %}" 
+                                       class="btn btn-sm btn-outline-danger"
+                                       onclick="return confirm('Are you sure you want to delete this section?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Section Modal -->
+<div class="modal fade" id="addSectionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Section</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'section_create' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Section Name</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Year Level</label>
+                        <select name="year_level" class="form-select" required>
+                            <option value="">Select Year Level</option>
+                            <option value="1st Year">1st Year</option>
+                            <option value="2nd Year">2nd Year</option>
+                            <option value="3rd Year">3rd Year</option>
+                            <option value="4th Year">4th Year</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Add Section</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Section Modal -->
+<div class="modal fade" id="editSectionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Section</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="editSectionForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Section Name</label>
+                        <input type="text" name="name" id="edit_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Year Level</label>
+                        <select name="year_level" id="edit_year_level" class="form-select" required>
+                            <option value="">Select Year Level</option>
+                            <option value="1st Year">1st Year</option>
+                            <option value="2nd Year">2nd Year</option>
+                            <option value="3rd Year">3rd Year</option>
+                            <option value="4th Year">4th Year</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if ($.fn.DataTable) {
+        $('#section-table').DataTable({
+            order: [[0, 'asc']],
+            pageLength: 25,
+            dom: 'Bfrtip',
+            buttons: ['copy', 'csv', 'excel', 'pdf', 'print']
+        });
+    }
+});
+
+function editSection(section) {
+    const modal = document.getElementById('editSectionModal');
+    const form = document.getElementById('editSectionForm');
+
+    form.action = `/admin-portal/sections/${section.id}/edit/`;
+    
+    document.getElementById('edit_name').value = section.name;
+    document.getElementById('edit_year_level').value = section.yearLevel;
+
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+</script>
+{% endblock %}

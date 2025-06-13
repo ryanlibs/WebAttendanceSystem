@@ -1,0 +1,184 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Take Attendance{% endblock %}
+{% block page_title %}Take Attendance - {{ session.schedule.subject.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">{{ session.schedule.section.name }} - {{ session.date|date:"M d, Y" }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <table class="table" id="attendance-table">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for attendance in attendances %}
+                                <tr>
+                                    <td>{{ attendance.student.student_id }}</td>
+                                    <td>{{ attendance.student.first_name }} {{ attendance.student.last_name }}</td>
+                                    <td>
+                                        <select name="status_{{ attendance.id }}" 
+                                                class="form-select status-select">
+                                            <option value="present" {% if attendance.status == 'present' %}selected{% endif %}>
+                                                Present
+                                            </option>
+                                            <option value="absent" {% if attendance.status == 'absent' %}selected{% endif %}>
+                                                Absent
+                                            </option>
+                                            <option value="late" {% if attendance.status == 'late' %}selected{% endif %}>
+                                                Late
+                                            </option>
+                                            <option value="excused" {% if attendance.status == 'excused' %}selected{% endif %}>
+                                                Excused
+                                            </option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 d-flex justify-content-between">
+                        <button type="submit" name="save_and_continue" class="btn btn-primary">
+                            Save and Continue
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            Save and Exit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label>Present</label>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" 
+                             style="width: {{ stats.present_percentage }}%">
+                            {{ stats.present_count }}
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label>Late</label>
+                    <div class="progress">
+                        <div class="progress-bar bg-warning" 
+                             style="width: {{ stats.late_percentage }}%">
+                            {{ stats.late_count }}
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label>Absent</label>
+                    <div class="progress">
+                        <div class="progress-bar bg-danger" 
+                             style="width: {{ stats.absent_percentage }}%">
+                            {{ stats.absent_count }}
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label>Excused</label>
+                    <div class="progress">
+                        <div class="progress-bar bg-info" 
+                             style="width: {{ stats.excused_percentage }}%">
+                            {{ stats.excused_count }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remarks Modal -->
+<div class="modal fade" id="remarksModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Remarks</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea class="form-control" id="remarks" rows="3"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveRemarks">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let currentAttendanceId;
+    
+    // Initialize DataTable with search and pagination
+    $('#attendance-table').DataTable({
+        pageLength: 50,
+        dom: 'frtip',
+        order: [[1, 'asc']] // Sort by name by default
+    });
+
+    // Auto-save on status change
+    $('.status-select').change(function() {
+        $(this).closest('form').submit();
+    });
+
+    // Handle remarks modal
+    $('.edit-remarks').click(function() {
+        currentAttendanceId = $(this).data('attendance-id');
+        $('#remarks').val($(this).data('remarks'));
+        $('#remarksModal').modal('show');
+    });
+
+    // Save remarks with proper URL
+    $('#saveRemarks').click(function() {
+        const remarks = $('#remarks').val();
+        $.post("{% url 'update_attendance_remarks' 0 %}".replace('0', currentAttendanceId), {
+            remarks: remarks,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        })
+        .done(function() {
+            $('#remarksModal').modal('hide');
+            // Show success message
+            Swal.fire({
+                title: 'Success!',
+                text: 'Remarks updated successfully',
+                icon: 'success',
+                timer: 1500
+            }).then(() => {
+                location.reload();
+            });
+        })
+        .fail(function() {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Failed to save remarks',
+                icon: 'error'
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

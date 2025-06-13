@@ -1,0 +1,81 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Session Details{% endblock %}
+{% block page_title %}Session Details - {{ session.schedule.subject.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <h6>Subject</h6>
+                        <p>{{ session.schedule.subject.name }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>Section</h6>
+                        <p>{{ session.schedule.section.name }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>Date</h6>
+                        <p>{{ session.date|date:"M d, Y" }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>Status</h6>
+                        <span class="badge bg-{{ session.status_color }}">
+                            {{ session.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="attendance-table">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attendance in attendances %}
+                            <tr>
+                                <td>{{ attendance.student.student_id }}</td>
+                                <td>{{ attendance.student.full_name }}</td>
+                                <td>
+                                    <span class="badge bg-{{ attendance.status_color }}">
+                                        {{ attendance.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ attendance.marked_at|time:"H:i" }}</td>
+                                <td>{{ attendance.remarks|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#attendance-table').DataTable({
+        order: [[1, 'asc']],
+        pageLength: 25,
+        dom: 'Bfrtip',
+        buttons: ['copy', 'csv', 'excel', 'pdf', 'print']
+    });
+});
+</script>
+{% endblock %}

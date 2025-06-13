@@ -1,0 +1,267 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Teacher Management{% endblock %}
+{% block page_title %}Teacher Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Add Teacher Button -->
+    <div class="col-12 mb-4">
+        <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTeacherModal">
+                <i class="fas fa-plus me-2"></i>Add Teacher
+            </button>
+        </div>
+    </div>
+
+    <!-- Teacher List -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="teacher-table">
+                        <thead>
+                            <tr>
+                                <th>Teacher ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Sections</th>
+                                <th>Subjects</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for teacher in teachers %}
+                            <tr>
+                                <td>{{ teacher.teacher_id }}</td>
+                                <td>{{ teacher.first_name }} {{ teacher.last_name }}</td>
+                                <td>{{ teacher.user.email }}</td>
+                                <td>{{ teacher.phone }}</td>
+                                <td>
+                                    {% for section in teacher.sections.all %}
+                                        {{ section.name }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% for subject in teacher.subjects.all %}
+                                        {{ subject.name }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            onclick="editTeacher({
+                                                id: '{{ teacher.id }}',
+                                                teacherId: '{{ teacher.teacher_id }}',
+                                                firstName: '{{ teacher.first_name }}',
+                                                lastName: '{{ teacher.last_name }}',
+                                                email: '{{ teacher.user.email }}',
+                                                phone: '{{ teacher.phone|default:'' }}',
+                                                sections: [{% for section in teacher.sections.all %}'{{ section.id }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+                                                subjects: [{% for subject in teacher.subjects.all %}'{{ subject.id }}'{% if not forloop.last %},{% endif %}{% endfor %}]
+                                            })">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <a href="{% url 'teacher_delete' teacher.id %}" 
+                                       class="btn btn-sm btn-outline-danger delete-teacher"
+                                       onclick="return confirm('Are you sure you want to delete this teacher?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Teacher Modal -->
+<div class="modal fade" id="addTeacherModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Teacher</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'teacher_create' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teacher ID</label>
+                            <input type="text" name="teacher_id" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">First Name</label>
+                            <input type="text" name="first_name" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" name="last_name" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" name="password" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="tel" name="phone" class="form-control">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Sections</label>
+                            <select name="sections" class="form-select" multiple required>
+                                {% for section in sections %}
+                                <option value="{{ section.id }}">{{ section.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Subjects</label>
+                            <select name="subjects" class="form-select" multiple required>
+                                {% for subject in subjects %}
+                                <option value="{{ subject.id }}">{{ subject.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Add Teacher</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Teacher Modal -->
+<div class="modal fade" id="editTeacherModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Teacher</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="editTeacherForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teacher ID</label>
+                            <input type="text" name="teacher_id" id="edit_teacher_code" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" id="edit_email" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">First Name</label>
+                            <input type="text" name="first_name" id="edit_first_name" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" name="last_name" id="edit_last_name" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" name="password" class="form-control">
+                            <small class="text-muted">Leave blank to keep current password</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="tel" name="phone" id="edit_phone" class="form-control">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Sections</label>
+                            <select name="sections" id="edit_sections" class="form-select" multiple required>
+                                {% for section in sections %}
+                                <option value="{{ section.id }}">{{ section.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Subjects</label>
+                            <select name="subjects" id="edit_subjects" class="form-select" multiple required>
+                                {% for subject in subjects %}
+                                <option value="{{ subject.id }}">{{ subject.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Update Teacher</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize DataTable
+    if ($.fn.DataTable) {
+        $('#teacher-table').DataTable({
+            order: [[1, 'asc']],
+            pageLength: 25,
+            dom: 'Bfrtip',
+            buttons: ['copy', 'csv', 'excel', 'pdf', 'print']
+        });
+    }
+});
+
+function editTeacher(teacher) {
+    const modal = document.getElementById('editTeacherModal');
+    const form = document.getElementById('editTeacherForm');
+
+    // Update form action
+    form.action = `/admin-portal/teachers/${teacher.id}/update/`;
+
+    // Set form field values
+    document.getElementById('edit_teacher_code').value = teacher.teacherId;
+    document.getElementById('edit_email').value = teacher.email;
+    document.getElementById('edit_first_name').value = teacher.firstName;
+    document.getElementById('edit_last_name').value = teacher.lastName;
+    document.getElementById('edit_phone').value = teacher.phone;
+
+    // Handle multiple selects
+    const sectionSelect = document.getElementById('edit_sections');
+    const subjectSelect = document.getElementById('edit_subjects');
+    
+    // Clear previous selections
+    Array.from(sectionSelect.options).forEach(option => {
+        option.selected = teacher.sections.includes(option.value);
+    });
+    
+    Array.from(subjectSelect.options).forEach(option => {
+        option.selected = teacher.subjects.includes(option.value);
+    });
+
+    // Show modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+</script>
+{% endblock %}

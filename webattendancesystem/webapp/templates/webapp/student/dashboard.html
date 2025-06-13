@@ -1,0 +1,133 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Monthly Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Present</h6>
+                    <h2 class="mb-0">{{ attendance_stats.present_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Late</h6>
+                    <h2 class="mb-0">{{ attendance_stats.late_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Absent</h6>
+                    <h2 class="mb-0">{{ attendance_stats.absent_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Attendance Rate</h6>
+                    <h2 class="mb-0">{{ attendance_stats.attendance_percentage }}%</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Today's Schedule -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Today's Schedule</h5>
+                </div>
+                <div class="card-body">
+                    {% if schedules %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Subject</th>
+                                    <th>Teacher</th>
+                                    <th>Room</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for schedule in schedules %}
+                                <tr>
+                                    <td>{{ schedule.start_time|time:"g:i A" }} - {{ schedule.end_time|time:"g:i A" }}</td>
+                                    <td>{{ schedule.subject.name }}</td>
+                                    <td>{{ schedule.teacher.user.get_full_name }}</td>
+                                    <td>{{ schedule.room }}</td>
+                                    <td>
+                                        {% for session in active_sessions %}
+                                            {% if session.schedule == schedule %}
+                                                <a href="{% url 'mark_attendance' session.id %}" class="btn btn-sm btn-primary">
+                                                    Mark Attendance
+                                                </a>
+                                            {% endif %}
+                                        {% empty %}
+                                            <span class="badge bg-secondary">Not Started</span>
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No classes scheduled for today.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Attendance -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Attendance</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_attendance %}
+                    <div class="list-group list-group-flush">
+                        {% for attendance in recent_attendance %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ attendance.session.schedule.subject.name }}</h6>
+                                    <small class="text-muted">
+                                        {{ attendance.session.date|date:"M d, Y" }} at 
+                                        {{ attendance.marked_at|time:"g:i A" }}
+                                    </small>
+                                </div>
+                                <span class="badge bg-{{ attendance.status_color }}">
+                                    {{ attendance.get_status_display }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No recent attendance records.</p>
+                    {% endif %}
+
+                    <div class="text-end mt-3">
+                        <a href="{% url 'student_attendance_history' %}" class="btn btn-sm btn-primary">
+                            View All Records
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

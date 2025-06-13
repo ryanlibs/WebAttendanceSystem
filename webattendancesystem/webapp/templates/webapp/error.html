@@ -1,0 +1,24 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Error{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-template">
+                <h1>Oops!</h1>
+                <h2>{{ error_code }}</h2>
+                <div class="error-details">
+                    {{ error_message }}
+                </div>
+                <div class="error-actions mt-4">
+                    <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                        <i class="fas fa-home me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

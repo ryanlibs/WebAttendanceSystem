@@ -1,0 +1,121 @@
+{% extends 'webapp/base.html' %}
+
+{% block title %}Attendance Sessions{% endblock %}
+{% block page_title %}Attendance Sessions{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Session Stats -->
+    <div class="col-12 mb-4">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title text-muted">Active Sessions</h5>
+                        <h2 class="mb-0">{{ active_sessions }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title text-muted">Today's Sessions</h5>
+                        <h2 class="mb-0">{{ today_sessions }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title text-muted">Total Sessions</h5>
+                        <h2 class="mb-0">{{ total_sessions }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title text-muted">Average Attendance</h5>
+                        <h2 class="mb-0">{{ average_attendance }}%</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sessions List -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="session-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Subject</th>
+                                <th>Section</th>
+                                <th>Status</th>
+                                <th>Attendance Rate</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in sessions %}
+                            <tr>
+                                <td>{{ session.date|date:"M d, Y" }}</td>
+                                <td>{{ session.schedule.subject.name }}</td>
+                                <td>{{ session.schedule.section.name }}</td>
+                                <td>
+                                    <span class="badge bg-{{ session.status_color }}">
+                                        {{ session.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success" 
+                                             style="width: {{ session.attendance_percentage }}%">
+                                            {{ session.attendance_percentage }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if session.status == 'ongoing' %}
+                                    <a href="{% url 'take_attendance' session.id %}" 
+                                       class="btn btn-sm btn-primary">
+                                        <i class="fas fa-clipboard-check"></i> Take Attendance
+                                    </a>
+                                    <a href="{% url 'end_session' session.id %}" 
+                                       class="btn btn-sm btn-danger"
+                                       onclick="return confirm('Are you sure you want to end this session?');">
+                                        <i class="fas fa-stop-circle"></i> End Session
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'take_attendance' session.id %}" 
+                                       class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#session-table').DataTable({
+        order: [[0, 'desc']],
+        pageLength: 25,
+        dom: 'Bfrtip',
+        buttons: ['copy', 'csv', 'excel', 'pdf', 'print']
+    });
+});
+</script>
+{% endblock %}

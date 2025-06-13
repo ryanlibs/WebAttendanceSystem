@@ -1,0 +1,71 @@
+{% extends 'webapp/base.html' %}
+{% load webapp_extras %}
+
+{% block title %}My Schedule{% endblock %}
+{% block page_title %}My Schedule{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="schedule-table">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Time</th>
+                                <th>Subject</th>
+                                <th>Section</th>
+                                <th>Room</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for schedule in schedules %}
+                            <tr>
+                                <td>{{ schedule.day_of_week|title }}</td>
+                                <td>{{ schedule.start_time|time:"H:i" }} - {{ schedule.end_time|time:"H:i" }}</td>
+                                <td>{{ schedule.subject.name }}</td>
+                                <td>{{ schedule.section.name }}</td>
+                                <td>{{ schedule.room }}</td>
+                                <td>
+                                    {% if schedule.can_take_attendance %}
+                                        <a href="{% url 'start_attendance_session' schedule.id %}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-clipboard-check"></i> Take Attendance
+                                        </a>
+                                    {% elif schedule.has_ongoing_session %}
+                                        <a href="{% url 'take_attendance' schedule.ongoing_session.id %}" 
+                                           class="btn btn-sm btn-warning">
+                                            <i class="fas fa-clipboard-list"></i> Continue Session
+                                        </a>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-secondary" disabled>
+                                            <i class="fas fa-clock"></i> Not Available
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#schedule-table').DataTable({
+        order: [[0, 'asc'], [1, 'asc']],
+        pageLength: 25,
+        dom: 'Bfrtip',
+        buttons: ['copy', 'csv', 'excel', 'pdf', 'print']
+    });
+});
+</script>
+{% endblock %}
