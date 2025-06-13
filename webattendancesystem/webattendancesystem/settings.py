@@ -23,13 +23,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-639c1hx=(d)=x$c^sq1r0$iun827bm+@=x4^m2&d(4#z=y!wsa'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
-    # 'webattendancesystem-production.up.railway.app',
-    # 'localhost',
-    # '0.0.0.0',
-    # '127.0.0.1'
+    'webattendancesystem-production.up.railway.app',
+    'localhost',
+    '0.0.0.0',
+    '127.0.0.1'
 ]
 
 
@@ -141,6 +141,6 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-# CSRF_TRUSTED_ORIGINS = [
-#     'https://webattendancesystem-production.up.railway.app'
-# ]
+CSRF_TRUSTED_ORIGINS = [
+    'https://webattendancesystem-production.up.railway.app'
+]
