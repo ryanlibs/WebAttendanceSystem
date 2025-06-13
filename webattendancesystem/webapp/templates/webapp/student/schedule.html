@@ -19,6 +19,7 @@
                             <th>Subject</th>
                             <th>Teacher</th>
                             <th>Room</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -29,6 +30,17 @@
                             <td>{{ schedule.subject.name }}</td>
                             <td>{{ schedule.teacher.full_name }}</td>
                             <td>{{ schedule.room }}</td>
+                            <td>
+                                {% if schedule.day_of_week == current_day %}
+                                    {% if schedule.is_time_available %}
+                                        <span class="badge bg-info">Started</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Not Started</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ schedule.day_of_week|title }}</span>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

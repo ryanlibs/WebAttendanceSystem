@@ -37,7 +37,9 @@ def teacher_dashboard(request):
     # Get today's schedules
     schedules = Schedule.objects.filter(
         teacher=teacher,
-        day_of_week=current_day
+        day_of_week=current_day,
+        section__in=teacher.sections.all(),  # Add section filter
+        subject__in=teacher.subjects.all()   # Add subject filter
     ).select_related(
         'subject',
         'section'
@@ -89,7 +91,9 @@ def teacher_schedule(request):
     current_day = today.strftime('%A').lower()
     
     schedules = Schedule.objects.filter(
-        teacher=teacher
+        teacher=teacher,
+        section__in=teacher.sections.all(),  # Add section filter 
+        subject__in=teacher.subjects.all()   # Add subject filter
     ).select_related(
         'subject',
         'section'
@@ -133,16 +137,33 @@ def teacher_schedule(request):
 # Add these helper methods
 def calculate_attendance_stats(session):
     """Calculate attendance statistics for a session"""
-    total_students = Student.objects.filter(section=session.schedule.section).count()
+    # Get distinct students from the section
+    total_students = Student.objects.filter(section=session.schedule.section).distinct().count()
     
+    # Get attendance counts for this specific session
     stats = {
-        'present_count': Attendance.objects.filter(session=session, status='present').count(),
-        'absent_count': Attendance.objects.filter(session=session, status='absent').count(),
-        'late_count': Attendance.objects.filter(session=session, status='late').count(),
-        'excused_count': Attendance.objects.filter(session=session, status='excused').count(),
+        'present_count': Attendance.objects.filter(
+            session=session, 
+            status='present'
+        ).distinct().count(),
+        
+        'absent_count': Attendance.objects.filter(
+            session=session, 
+            status='absent'
+        ).distinct().count(),
+        
+        'late_count': Attendance.objects.filter(
+            session=session, 
+            status='late'
+        ).distinct().count(),
+        
+        'excused_count': Attendance.objects.filter(
+            session=session, 
+            status='excused'
+        ).distinct().count(),
     }
     
-    # Use total students as denominator instead of sum of attendance records
+    # Calculate percentage using actual student count from section
     stats['attendance_percentage'] = round(
         ((stats['present_count'] + stats['late_count']) / total_students * 100) 
         if total_students > 0 else 0

@@ -290,10 +290,16 @@ def schedule_list(request):
     if request.user.user_type != 'admin':
         return redirect('login')
     
-    schedules = Schedule.objects.select_related('teacher', 'subject', 'section').all()
-    teachers = Teacher.objects.all()
-    subjects = Subject.objects.all()
-    sections = Section.objects.all()
+    schedules = Schedule.objects.select_related(
+        'teacher', 
+        'subject', 
+        'section'
+    ).order_by('day_of_week', 'start_time')
+    
+    # Get only valid teacher-subject-section combinations
+    teachers = Teacher.objects.prefetch_related('subjects', 'sections').all()
+    subjects = Subject.objects.all().order_by('name')
+    sections = Section.objects.all().order_by('name')
     
     context = {
         'schedules': schedules,
@@ -303,50 +309,113 @@ def schedule_list(request):
     }
     return render(request, 'webapp/admin/schedule_list.html', context)
 
-@login_required
+@login_required 
 def schedule_create(request):
     if request.user.user_type != 'admin':
         return redirect('login')
     
     if request.method == 'POST':
         try:
-            Schedule.objects.create(
-                teacher_id=request.POST.get('teacher'),
-                subject_id=request.POST.get('subject'),
-                section_id=request.POST.get('section'),
-                day_of_week=request.POST.get('day_of_week'),
-                start_time=request.POST.get('start_time'),
-                end_time=request.POST.get('end_time'),
-                room=request.POST.get('room')
+            teacher_id = request.POST.get('teacher')
+            subject_id = request.POST.get('subject')
+            section_id = request.POST.get('section')
+            day_of_week = request.POST.get('day_of_week')
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            room = request.POST.get('room', '')
+            
+            # Validate teacher has access to subject and section
+            teacher = Teacher.objects.get(id=teacher_id)
+            if not (teacher.subjects.filter(id=subject_id).exists() and 
+                   teacher.sections.filter(id=section_id).exists()):
+                messages.error(request, 'Invalid teacher-subject-section combination')
+                return redirect('schedule_list')
+            
+            # Check for schedule conflicts
+            conflicts = Schedule.objects.filter(
+                day_of_week=day_of_week,
+                section_id=section_id
+            ).filter(
+                Q(start_time__lt=end_time, end_time__gt=start_time) |
+                Q(start_time__exact=start_time) |
+                Q(end_time__exact=end_time)
             )
+            
+            if conflicts.exists():
+                messages.error(request, 'Schedule conflict detected')
+                return redirect('schedule_list')
+            
+            Schedule.objects.create(
+                teacher_id=teacher_id,
+                subject_id=subject_id,
+                section_id=section_id,
+                day_of_week=day_of_week,
+                start_time=start_time,
+                end_time=end_time,
+                room=room,
+                is_active=True
+            )
+            
             messages.success(request, 'Schedule created successfully')
+            
         except Exception as e:
             messages.error(request, f'Error creating schedule: {str(e)}')
-    
+            
     return redirect('schedule_list')
 
 @login_required
 def schedule_edit(request, schedule_id):
     if request.user.user_type != 'admin':
         return redirect('login')
-    
-    schedule = get_object_or_404(Schedule, id=schedule_id)
-    
-    if request.method == 'POST':
-        try:
-            schedule.teacher_id = request.POST.get('teacher')
-            schedule.subject_id = request.POST.get('subject')
-            schedule.section_id = request.POST.get('section')
-            schedule.day_of_week = request.POST.get('day_of_week')
-            schedule.start_time = request.POST.get('start_time')
-            schedule.end_time = request.POST.get('end_time')
-            schedule.room = request.POST.get('room')
+        
+    try:
+        schedule = get_object_or_404(Schedule, id=schedule_id)
+        
+        if request.method == 'POST':
+            teacher_id = request.POST.get('teacher')
+            subject_id = request.POST.get('subject')
+            section_id = request.POST.get('section')
+            day_of_week = request.POST.get('day_of_week')
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            room = request.POST.get('room', '')
+            
+            # Validate teacher has access to subject and section
+            teacher = Teacher.objects.get(id=teacher_id)
+            if not (teacher.subjects.filter(id=subject_id).exists() and 
+                   teacher.sections.filter(id=section_id).exists()):
+                messages.error(request, 'Invalid teacher-subject-section combination')
+                return redirect('schedule_list')
+            
+            # Check for schedule conflicts excluding current schedule
+            conflicts = Schedule.objects.filter(
+                day_of_week=day_of_week,
+                section_id=section_id
+            ).exclude(id=schedule_id).filter(
+                Q(start_time__lt=end_time, end_time__gt=start_time) |
+                Q(start_time__exact=start_time) |
+                Q(end_time__exact=end_time)
+            )
+            
+            if conflicts.exists():
+                messages.error(request, 'Schedule conflict detected')
+                return redirect('schedule_list')
+            
+            # Update schedule
+            schedule.teacher_id = teacher_id
+            schedule.subject_id = subject_id
+            schedule.section_id = section_id
+            schedule.day_of_week = day_of_week
+            schedule.start_time = start_time
+            schedule.end_time = end_time
+            schedule.room = room
             schedule.save()
             
             messages.success(request, 'Schedule updated successfully')
-        except Exception as e:
-            messages.error(request, f'Error updating schedule: {str(e)}')
-    
+            
+    except Exception as e:
+        messages.error(request, f'Error updating schedule: {str(e)}')
+        
     return redirect('schedule_list')
 
 @login_required
@@ -356,11 +425,19 @@ def schedule_delete(request, schedule_id):
     
     try:
         schedule = get_object_or_404(Schedule, id=schedule_id)
+        
+        # Check if schedule has any active attendance sessions
+        if AttendanceSession.objects.filter(schedule=schedule, status='ongoing').exists():
+            messages.error(request, 'Cannot delete schedule with active attendance sessions')
+            return redirect('schedule_list')
+        
+        # Delete the schedule
         schedule.delete()
         messages.success(request, 'Schedule deleted successfully')
+        
     except Exception as e:
         messages.error(request, f'Error deleting schedule: {str(e)}')
-    
+        
     return redirect('schedule_list')
 
 # Section Management

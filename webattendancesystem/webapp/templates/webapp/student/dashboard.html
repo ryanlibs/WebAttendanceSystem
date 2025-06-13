@@ -68,15 +68,11 @@
                                     <td>{{ schedule.teacher.user.get_full_name }}</td>
                                     <td>{{ schedule.room }}</td>
                                     <td>
-                                        {% for session in active_sessions %}
-                                            {% if session.schedule == schedule %}
-                                                <a href="{% url 'mark_attendance' session.id %}" class="btn btn-sm btn-primary">
-                                                    Mark Attendance
-                                                </a>
-                                            {% endif %}
-                                        {% empty %}
+                                        {% if schedule.is_time_available %}
+                                            <span class="badge bg-info">Started</span>
+                                        {% else %}
                                             <span class="badge bg-secondary">Not Started</span>
-                                        {% endfor %}
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}

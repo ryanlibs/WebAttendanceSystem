@@ -106,10 +106,14 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Teacher</label>
-                        <select name="teacher" class="form-select" required>
+                        <select name="teacher" class="form-select" id="teacher-select" required>
                             <option value="">Select Teacher</option>
                             {% for teacher in teachers %}
-                            <option value="{{ teacher.id }}">{{ teacher.full_name }}</option>
+                            <option value="{{ teacher.id }}" 
+                                    data-subjects="{% for subject in teacher.subjects.all %}{{ subject.id }},{% endfor %}"
+                                    data-sections="{% for section in teacher.sections.all %}{{ section.id }},{% endfor %}">
+                                {{ teacher.full_name }}
+                            </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -166,6 +170,7 @@
                                 <option value="wednesday">Wednesday</option>
                                 <option value="thursday">Thursday</option>
                                 <option value="friday">Friday</option>
+                                <option value="saturday">Saturday</option>
                             </select>
                         </div>
                         <div class="col-md-3 mb-3">
@@ -220,8 +225,39 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ block.super }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const teacherSelect = document.getElementById('teacher-select');
+    const subjectSelect = document.querySelector('select[name="subject"]');
+    const sectionSelect = document.querySelector('select[name="section"]');
+    
+    // Store original options
+    const allSubjects = Array.from(subjectSelect.options);
+    const allSections = Array.from(sectionSelect.options);
+    
+    teacherSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const teacherSubjects = selectedOption.dataset.subjects?.split(',').filter(Boolean) || [];
+        const teacherSections = selectedOption.dataset.sections?.split(',').filter(Boolean) || [];
+        
+        // Reset and filter subject options
+        subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+        allSubjects.forEach(option => {
+            if (teacherSubjects.includes(option.value)) {
+                subjectSelect.appendChild(option.cloneNode(true));
+            }
+        });
+        
+        // Reset and filter section options
+        sectionSelect.innerHTML = '<option value="">Select Section</option>';
+        allSections.forEach(option => {
+            if (teacherSections.includes(option.value)) {
+                sectionSelect.appendChild(option.cloneNode(true));
+            }
+        });
+    });
+    
     // Initialize DataTable
     if ($.fn.DataTable) {
         $('#schedule-table').DataTable({

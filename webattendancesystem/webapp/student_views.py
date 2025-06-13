@@ -8,6 +8,63 @@ from .models import Student, Schedule, AttendanceSession, Attendance
 from django.db.models import Q, Count
 from django.contrib.auth.hashers import make_password
 
+def is_schedule_available(schedule):
+    """Helper function to check if schedule is within time range"""
+    now = timezone.localtime()
+    current_time = now.time()
+    
+    # Convert schedule times to minutes for comparison
+    current_minutes = current_time.hour * 60 + current_time.minute
+    start_minutes = schedule.start_time.hour * 60 + schedule.start_time.minute
+    end_minutes = schedule.end_time.hour * 60 + schedule.end_time.minute
+    
+    # Allow attendance 15 minutes before start time until end time
+    return (start_minutes - 15) <= current_minutes <= end_minutes
+
+def is_session_available(schedule):
+    """Helper function to check if schedule is within time range and has active session"""
+    now = timezone.localtime()
+    current_time = now.time()
+    
+    # Convert schedule times to minutes for comparison
+    current_minutes = current_time.hour * 60 + current_time.minute
+    start_minutes = schedule.start_time.hour * 60 + schedule.start_time.minute
+    end_minutes = schedule.end_time.hour * 60 + schedule.end_time.minute
+    
+    # Check if within time range
+    is_time_available = (start_minutes - 15) <= current_minutes <= end_minutes
+    
+    # Check for active session
+    active_session = AttendanceSession.objects.filter(
+        schedule=schedule,
+        date=now.date(),
+        status='ongoing'
+    ).first()
+    
+    return is_time_available, active_session
+
+def get_active_sessions(student, schedule):
+    """Helper function to get active sessions for a student's schedule"""
+    today = timezone.localtime()
+    
+    # Get ongoing session for this schedule today
+    active_session = AttendanceSession.objects.filter(
+        schedule=schedule,
+        date=today.date(),
+        status='ongoing'  # Only get active sessions
+    ).first()
+
+    if active_session:
+        # Check if student already marked attendance
+        has_attendance = Attendance.objects.filter(
+            session=active_session,
+            student=student
+        ).exists()
+        
+        return active_session, has_attendance
+        
+    return None, False
+
 @login_required
 def student_dashboard(request):
     if request.user.user_type != 'student':
@@ -16,36 +73,69 @@ def student_dashboard(request):
     student = get_object_or_404(Student, user=request.user)
     today = timezone.localtime()
     current_day = today.strftime('%A').lower()
-
-    # Get today's schedule
+    
+    # Get today's schedules
     schedules = Schedule.objects.filter(
         section=student.section,
         day_of_week=current_day
-    ).select_related('subject', 'teacher')
-    
-    # Get active sessions
-    active_sessions = AttendanceSession.objects.filter(
-        schedule__section=student.section,
-        status='ongoing',
-        date=today.date()
-    ).select_related('schedule__subject', 'schedule__teacher')
+    ).select_related(
+        'subject', 
+        'teacher'
+    ).order_by('start_time')
 
-    # Get monthly attendance stats
+    for schedule in schedules:
+        schedule.is_time_available = is_schedule_available(schedule)
+        
+        existing_session = AttendanceSession.objects.filter(
+            schedule=schedule,
+            date=today.date()
+        ).first()
+        
+        if existing_session and existing_session.status == 'ongoing':
+            schedule.active_session = existing_session
+            attendance = Attendance.objects.filter(
+                session=existing_session,
+                student=student
+            ).first()
+            
+            if attendance:
+                schedule.has_marked_attendance = True
+                schedule.attendance_status = attendance.get_status_display()
+                schedule.status_color = {
+                    'present': 'success',
+                    'late': 'warning',
+                    'absent': 'danger',
+                    'excused': 'info'
+                }.get(attendance.status, 'secondary')
+            else:
+                schedule.has_marked_attendance = False
+                schedule.status_color = 'warning'
+                schedule.attendance_status = 'Session Active'
+        else:
+            schedule.active_session = None
+            schedule.has_marked_attendance = False
+            if schedule.is_time_available:
+                schedule.status_color = 'info'
+                schedule.attendance_status = 'Scheduled Started'
+            else:
+                schedule.status_color = 'secondary'
+                schedule.attendance_status = 'Not Scheduled Started'
+
+    # Monthly stats (keep existing code)
     start_date = today.replace(day=1)
     end_date = (start_date + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-    
     monthly_attendance = Attendance.objects.filter(
         student=student,
         session__date__range=[start_date, end_date]
     )
     
-    total_sessions = monthly_attendance.count()
     attendance_stats = {
         'present_count': monthly_attendance.filter(status='present').count(),
         'late_count': monthly_attendance.filter(status='late').count(),
         'absent_count': monthly_attendance.filter(status='absent').count(),
     }
     
+    total_sessions = monthly_attendance.count()
     if total_sessions > 0:
         attendance_stats['attendance_percentage'] = round(
             ((attendance_stats['present_count'] + attendance_stats['late_count']) / total_sessions) * 100
@@ -53,15 +143,13 @@ def student_dashboard(request):
     else:
         attendance_stats['attendance_percentage'] = 0
 
-    # Get recent attendance
+    # Recent attendance (keep existing code)
     recent_attendance = Attendance.objects.filter(
         student=student
     ).select_related(
-        'session__schedule__subject',
-        'session__schedule__teacher'
+        'session__schedule__subject'
     ).order_by('-session__date', '-marked_at')[:5]
-
-    # Add status colors
+    
     for attendance in recent_attendance:
         attendance.status_color = {
             'present': 'success',
@@ -73,7 +161,6 @@ def student_dashboard(request):
     context = {
         'student': student,
         'schedules': schedules,
-        'active_sessions': active_sessions,
         'attendance_stats': attendance_stats,
         'recent_attendance': recent_attendance
     }
@@ -87,25 +174,69 @@ def student_schedule(request):
     student = get_object_or_404(Student, user=request.user)
     today = timezone.localtime()
     current_day = today.strftime('%A').lower()
-    
+
+    # Get active sessions (like teacher view)
+    active_sessions = AttendanceSession.objects.filter(
+        schedule__section=student.section,
+        status='ongoing',
+        date=today.date()
+    ).count()
+
     # Get all schedules
     schedules = Schedule.objects.filter(
         section=student.section
-    ).select_related('subject', 'teacher').order_by('day_of_week', 'start_time')
+    ).select_related(
+        'subject', 
+        'teacher'
+    ).order_by('day_of_week', 'start_time')
 
-    # Add day display and active session info
     for schedule in schedules:
+        # Check if it's today's schedule
         if schedule.day_of_week == current_day:
-            # Check for active session
-            active_session = AttendanceSession.objects.filter(
+            schedule.is_time_available = is_schedule_available(schedule)
+            
+            # Get active session for today (like teacher view)
+            existing_session = AttendanceSession.objects.filter(
                 schedule=schedule,
-                date=today.date(),
-                status='ongoing'
+                date=today.date()
             ).first()
-            schedule.active_session = active_session
-            schedule.is_active = bool(active_session)
+            
+            if existing_session and existing_session.status == 'ongoing':
+                schedule.active_session = existing_session
+                # Check if student has marked attendance
+                attendance = Attendance.objects.filter(
+                    session=existing_session,
+                    student=student
+                ).first()
+                
+                if attendance:
+                    schedule.has_marked_attendance = True
+                    schedule.attendance_status = attendance.get_status_display()
+                    schedule.status_color = {
+                        'present': 'success',
+                        'late': 'warning',
+                        'absent': 'danger',
+                        'excused': 'info'
+                    }.get(attendance.status, 'secondary')
+                else:
+                    schedule.has_marked_attendance = False
+                    schedule.status_color = 'warning'
+                    schedule.attendance_status = 'Session Active'
+            else:
+                schedule.active_session = None
+                schedule.has_marked_attendance = False
+                if schedule.is_time_available:
+                    schedule.status_color = 'info'
+                    schedule.attendance_status = 'Waiting to Start'
+                else:
+                    schedule.status_color = 'secondary'
+                    schedule.attendance_status = 'Not Started'
         else:
-            schedule.is_active = False
+            schedule.is_time_available = False
+            schedule.active_session = None
+            schedule.has_marked_attendance = False
+            schedule.attendance_status = schedule.day_of_week.title()
+            schedule.status_color = 'secondary'
 
     context = {
         'student': student,
@@ -179,31 +310,33 @@ def mark_attendance(request, session_id):
     student = get_object_or_404(Student, user=request.user)
     session = get_object_or_404(AttendanceSession, id=session_id)
 
-    # Verify student belongs to section
+    # Verify student belongs to section and session is active
     if student.section != session.schedule.section:
         messages.error(request, 'You are not enrolled in this class.')
         return redirect('student_dashboard')
 
-    # Check if session is active
     if session.status != 'ongoing':
         messages.error(request, 'This attendance session is not active.')
         return redirect('student_dashboard')
 
-    # Mark attendance
+    # Create or update attendance record as present
     attendance, created = Attendance.objects.get_or_create(
         session=session,
         student=student,
         defaults={
             'status': 'present',
-            'marked_at': timezone.now()
+            'marked_at': timezone.now(),
+            'marked_by': request.user
         }
     )
 
-    if created:
-        messages.success(request, 'Attendance marked successfully!')
-    else:
-        messages.info(request, 'You have already marked your attendance for this session.')
+    if not created:
+        # Update existing record to present
+        attendance.status = 'present'
+        attendance.marked_at = timezone.now()
+        attendance.save()
 
+    messages.success(request, 'You have been marked present!')
     return redirect('student_dashboard')
 
 @login_required
