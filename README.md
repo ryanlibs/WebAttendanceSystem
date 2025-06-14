@@ -20,3 +20,12 @@ student@bacoor.sti.edu.ph : student061325
 
 
 btw you can add more teacher and student via its admin side
+
+
+## MBEMBERS ##
+JOHN RYAN C. ALBON
+ERWIN JOHN UNISA
+JAMES HENRY CADAGUIT
+DWIGHT JUSTIN NAMUCO
+ELOISA GARING
+ALJAYRIK JOSH PASCUA
