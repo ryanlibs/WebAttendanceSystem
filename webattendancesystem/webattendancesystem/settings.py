@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-639c1hx=(d)=x$c^sq1r0$iun827bm+@=x4^m2&d(4#z=y!wsa
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    'webattendancesystem-production.up.railway.app',
+    'webattendancesystem.onrender.com',
     'localhost',
     '0.0.0.0',
     '127.0.0.1'
@@ -142,5 +142,5 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://webattendancesystem-production.up.railway.app'
+    'https://webattendancesystem.onrender.com'
 ]
